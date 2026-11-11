@@ -1,0 +1,274 @@
+-- ISHIN MULTI SYSTEM FLOATING GUI
+-- Re-Engineered via Nil-Remotes & ByteNet Combat Bypass
+-- Delta Executor Mobile Compatibility Layout
+
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+
+local player = Players.LocalPlayer
+local camera = Workspace.CurrentCamera
+local gui = Instance.new("ScreenGui")
+gui.Name = "IshinFloatingGUI"
+gui.ResetOnSpawn = false
+gui.Parent = player:WaitForChild("PlayerGui")
+
+-- Main UI Frame Layout
+local frame = Instance.new("Frame")
+frame.Size = UDim2.fromOffset(260, 360)
+frame.Position = UDim2.new(0, 25, 0.3, 0)
+frame.BackgroundColor3 = Color3.fromRGB(24, 18, 22)
+frame.Parent = gui
+
+local frameCorner = Instance.new("UICorner", frame)
+frameCorner.CornerRadius = UDim.new(0, 8)
+
+-- Window Drag Handler
+local mainDragging = false
+local mainDragStart, mainStartPos
+
+frame.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+		mainDragging = true
+		mainDragStart = input.Position
+		mainStartPos = frame.Position
+	end
+end)
+
+-- Header Title
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, -45, 0, 45)
+title.BackgroundTransparency = 1
+title.Text = "ISHIN | MULTI SYSTEM"
+title.TextColor3 = Color3.fromRGB(255, 65, 65)
+title.Font = Enum.Font.GothamBold
+title.TextSize = 17
+title.Parent = frame
+
+-- Minimize Button
+local minimize = Instance.new("TextButton")
+minimize.Size = UDim2.fromOffset(35, 35)
+minimize.Position = UDim2.new(1, -40, 0, 5)
+minimize.Text = "–"
+minimize.TextSize = 24
+minimize.BackgroundColor3 = Color3.fromRGB(100, 20, 20)
+minimize.TextColor3 = Color3.new(1,1,1)
+minimize.Parent = frame
+
+local minCorner = Instance.new("UICorner", minimize)
+minCorner.CornerRadius = UDim.new(0, 6)
+
+-- Minimized Sticker Bubble
+local sticker = Instance.new("TextButton")
+sticker.Size = UDim2.fromOffset(55, 55)
+sticker.Position = UDim2.new(0, 25, 0.5, 0)
+sticker.Text = "ISHIN"
+sticker.TextSize = 12
+sticker.Font = Enum.Font.GothamBold
+sticker.TextColor3 = Color3.new(1,1,1)
+sticker.BackgroundColor3 = Color3.fromRGB(160, 15, 25)
+sticker.Visible = false
+sticker.Parent = gui
+
+local stickerCorner = Instance.new("UICorner", sticker)
+stickerCorner.CornerRadius = UDim.new(1, 0)
+
+-- Core System States
+local states = {
+	["Auto Parry"] = false,
+	["Combat Automation"] = false,
+	["Auto Dodge/Weave"] = false,
+	["Auto Sprint"] = false,
+	["Camera Lock-On"] = false
+}
+
+-- NIL EVENT BYPASS FUNCTION
+local function getNilInstance(className)
+	if typeof(getnilinstances) == "function" then
+		for _, v in next, getnilinstances() do
+			if v:IsA(className) then
+				return v
+			end
+		end
+	end
+	return nil
+end
+
+-- Nearest Target Locator
+local function getClosestEnemy(maxDistance)
+	local closest = nil
+	local shortestDist = maxDistance
+	local localHrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+	
+	if localHrp then
+		for _, enemy in ipairs(Workspace:GetChildren()) do
+			if enemy:IsA("Model") and enemy ~= player.Character then
+				local enemyHum = enemy:FindFirstChildOfClass("Humanoid")
+				local enemyHrp = enemy:FindFirstChild("HumanoidRootPart")
+				
+				if enemyHum and enemyHrp and enemyHum.Health > 0 then
+					local dist = (localHrp.Position - enemyHrp.Position).Magnitude
+					if dist < shortestDist then
+						shortestDist = dist
+						closest = enemy
+					end
+				end
+			end
+		end
+	end
+	return closest
+end
+
+local lastAttack = 0
+local lastParry = 0
+local lastEvade = 0
+
+-- Engine Heartbeat Loop Processing Engine
+RunService.RenderStepped:Connect(function()
+	local localChar = player.Character
+	local localHrp = localChar and localChar:FindFirstChild("HumanoidRootPart")
+	local localHum = localChar and localChar:FindFirstChildOfClass("Humanoid")
+
+	if localHrp and localHum then
+		-- 1. AUTO SPRINT ASSIST
+		if states["Auto Sprint"] and localHum.MoveDirection.Magnitude > 0 then
+			if not UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
+				VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.LeftShift, false, game)
+			end
+		end
+
+		local activeTarget = getClosestEnemy(40)
+		if activeTarget then
+			local enemyHrp = activeTarget:FindFirstChild("HumanoidRootPart")
+			local enemyHum = activeTarget:FindFirstChildOfClass("Humanoid")
+			local distance = (localHrp.Position - enemyHrp.Position).Magnitude
+
+			-- 2. CAMERA LOCK-ON SYSTEM
+			if states["Camera Lock-On"] then
+				local targetPos = enemyHrp.Position + Vector3.new(0, 1.5, 0)
+				camera.CFrame = CFrame.lookAt(camera.CFrame.Position, targetPos)
+			end
+
+			-- Detect target structural attack indicators
+			local isEnemyAttacking = activeTarget:GetAttribute("Attacking") or activeTarget:FindFirstChild("IsStriking") or activeTarget:FindFirstChildOfClass("Tool")
+
+			-- 3. NETWORK LEVEL AUTO PARRY
+			if states["Auto Parry"] and distance < 14 and isEnemyAttacking then
+				if tick() - lastParry > 0.06 then
+					lastParry = tick()
+					
+					local remoteEvent = getNilInstance("RemoteEvent")
+					if remoteEvent then
+						pcall(function()
+							remoteEvent:FireServer("Block")
+						end)
+					else
+						VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.F, false, game)
+						task.wait(0.01)
+						VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.F, false, game)
+					end
+				end
+			end
+
+			-- 4. SMART AUTO DODGE / WEAVE ENGINE
+			if states["Auto Dodge/Weave"] and distance < 12 and isEnemyAttacking then
+				if tick() - lastEvade > 0.15 then
+					lastEvade = tick()
+					local actionKey = (math.random(1, 2) == 1) and Enum.KeyCode.Q or Enum.KeyCode.X
+					VirtualInputManager:SendKeyEvent(true, actionKey, false, game)
+					task.wait(0.01)
+					VirtualInputManager:SendKeyEvent(false, actionKey, false, game)
+				end
+			end
+
+			-- 5. COMBAT AUTOMATION ENGINE (Combo Chain & Critical Finisher Loop)
+			if states["Combat Automation"] and distance < 11 then
+				if tick() - lastAttack > 0.12 then
+					lastAttack = tick()
+					
+					local isPostureBroken = activeTarget:GetAttribute("Stunned") or activeTarget:FindFirstChild("Stunned") or (enemyHum and enemyHum.WalkSpeed < 4)
+					
+					if isPostureBroken then
+						VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+						VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
+						task.wait(0.01)
+						VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+						VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
+					else
+						VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
+						task.wait(0.01)
+						VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
+					end
+				end
+			end
+		end
+	end
+end)
+
+-- UI Button Spawner Logic
+local systems = {"Auto Parry", "Combat Automation", "Auto Dodge/Weave", "Auto Sprint", "Camera Lock-On"}
+
+for i, name in ipairs(systems) do
+	local button = Instance.new("TextButton")
+	button.Size = UDim2.new(0.88, 0, 0, 38)
+	button.Position = UDim2.new(0.06, 0, 0, 52 + (i-1)*45)
+	button.Text = name .. ": OFF"
+	button.TextColor3 = Color3.new(1,1,1)
+	button.BackgroundColor3 = Color3.fromRGB(48,40,45)
+	button.Font = Enum.Font.GothamBold
+	button.TextSize = 12
+	button.Parent = frame
+
+	local btnCorner = Instance.new("UICorner", button)
+	btnCorner.CornerRadius = UDim.new(0, 6)
+
+	button.MouseButton1Click:Connect(function()
+		states[name] = not states[name]
+		button.Text = name .. (states[name] and ": ON" or ": OFF")
+		button.BackgroundColor3 = states[name] and Color3.fromRGB(130,25,25) or Color3.fromRGB(48,40,45)
+	end)
+end
+
+-- Layout Screen Visibility Clean Switches
+minimize.MouseButton1Click:Connect(function()
+	frame.Visible = false
+	sticker.Visible = true
+end)
+
+sticker.MouseButton1Click:Connect(function()
+	sticker.Visible = false
+	frame.Visible = true
+end)
+
+-- Minimized Sticker Bubble Drag Processing
+local stickerDragging = false
+local stickerDragStart, stickerStartPos
+
+sticker.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+		stickerDragging = true
+		stickerDragStart = input.Position
+		stickerStartPos = sticker.Position
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement then
+		if mainDragging then
+			local delta = input.Position - mainDragStart
+			frame.Position = UDim2.new(mainStartPos.X.Scale, mainStartPos.X.Offset + delta.X, mainStartPos.Y.Scale, mainStartPos.Y.Offset + delta.Y)
+		elseif stickerDragging then
+			local delta = input.Position - stickerDragStart
+			sticker.Position = UDim2.new(stickerStartPos.X.Scale, stickerStartPos.X.Offset + delta.X, stickerStartPos.Y.Scale, stickerStartPos.Y.Offset + delta.Y)
+		end
+	end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+		stickerDragging = false
+		mainDragging = false
+	end
+end)
